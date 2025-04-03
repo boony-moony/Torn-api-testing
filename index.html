@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+        .user-info { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            background: #333; 
+            color: white; 
+            padding: 10px; 
+            border-radius: 5px; 
+        }
+        .login-form { 
+            margin-top: 50px; 
+            text-align: center; 
+            padding: 20px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px; 
+        }
+        .stats-container { margin-top: 50px; }
+        canvas { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <div id="user-info" class="user-info"></div>
+    
+    <div class="container">
+        <form id="login-form" class="login-form">
+            <h2>Enter Torn City API Key</h2>
+            <input type="text" id="api-key" placeholder="API Key" required>
+            <button type="submit">Login</button>
+        </form>
+
+        <div id="stats-container" class="stats-container hidden">
+            <!-- Statistics will appear here -->
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        class TornStatsApp {
+            constructor() {
+                this.initializeElements();
+                this.setupEventListeners();
+            }
+
+            initializeElements() {
+                this.loginForm = document.getElementById('login-form');
+                this.apiKeyInput = document.getElementById('api-key');
+                this.userInfoDiv = document.getElementById('user-info');
+                this.statsContainer = document.getElementById('stats-container');
+            }
+
+            setupEventListeners() {
+                this.loginForm.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleLogin();
+                });
+            }
+
+            async handleLogin() {
+                const apiKey = this.apiKeyInput.value.trim();
+                
+                try {
+                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
+                    const data = await response.json();
+
+                    if (data.error) {
+                        alert('Invalid API Key');
+                        return;
+                    }
+
+                    this.updateUserInfo(data);
+                    this.fetchStatistics(apiKey);
+                    
+                    this.loginForm.classList.add('hidden');
+                    this.statsContainer.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Failed to connect to Torn API');
+                }
+            }
+
+            updateUserInfo(data) {
+                this.userInfoDiv.innerHTML = `
+                    <strong>${data.name}</strong><br>
+                    ID: ${data.player_id}
+                `;
+            }
+
+            async fetchStatistics(apiKey) {
+                const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=profile`);
+                const data = await response.json();
+
+                // Create a simple chart showing basic statistics
+                const ctx = document.createElement('canvas');
+                this.statsContainer.appendChild(ctx);
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Strength', 'Speed', 'Defense', 'Dexterity'],
+                        datasets: [{
+                            label: 'Stats',
+                            data: [
+                                data.strength,
+                                data.speed,
+                                data.defense,
+                                data.dexterity
+                            ],
+                            backgroundColor: [
+                                'rgba(255, 99, 132, 0.2)',
+                                'rgba(54, 162, 235, 0.2)',
+                                'rgba(75, 192, 192, 0.2)',
+                                'rgba(153, 102, 255, 0.2)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+        }
+
+        // Initialize the app when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new TornStatsApp();
+        });
+    </script>
+</body>
+</html>
