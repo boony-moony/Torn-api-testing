@@ -1,6 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torn City Stats</title>
     <style>
         .container { max-width: 800px; margin: 0 auto; padding: 20px; }
         .user-info { 
@@ -19,6 +22,11 @@
             border: 1px solid #ccc; 
             border-radius: 5px; 
         }
+        .error-message { 
+            color: red; 
+            margin-top: 10px; 
+            display: none; 
+        }
         .stats-container { margin-top: 50px; }
         canvas { max-width: 100%; height: auto; }
     </style>
@@ -31,6 +39,7 @@
             <h2>Enter Torn City API Key</h2>
             <input type="text" id="api-key" placeholder="API Key" required>
             <button type="submit">Login</button>
+            <div id="error-message" class="error-message"></div>
         </form>
 
         <div id="stats-container" class="stats-container hidden">
@@ -44,6 +53,7 @@
             constructor() {
                 this.initializeElements();
                 this.setupEventListeners();
+                this.setupErrorHandling();
             }
 
             initializeElements() {
@@ -51,6 +61,7 @@
                 this.apiKeyInput = document.getElementById('api-key');
                 this.userInfoDiv = document.getElementById('user-info');
                 this.statsContainer = document.getElementById('stats-container');
+                this.errorMessage = document.getElementById('error-message');
             }
 
             setupEventListeners() {
@@ -60,56 +71,99 @@
                 });
             }
 
+            setupErrorHandling() {
+                window.onerror = (message, source, lineno, colno, error) => {
+                    this.showError(`Error: ${message} at line ${lineno}`);
+                    return true;
+                };
+            }
+
             async handleLogin() {
                 const apiKey = this.apiKeyInput.value.trim();
                 
                 try {
-                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
-                    const data = await response.json();
-
-                    if (data.error) {
-                        alert('Invalid API Key');
-                        return;
+                    // Validate API key format
+                    if (!this.validateApiKey(apiKey)) {
+                        throw new Error('Invalid API key format');
                     }
 
-                    this.updateUserInfo(data);
-                    this.fetchStatistics(apiKey);
+                    // Try basic info first
+                    const basicInfo = await this.fetchBasicInfo(apiKey);
                     
-                    this.loginForm.classList.add('hidden');
-                    this.statsContainer.classList.remove('hidden');
+                    // If basic info succeeds, fetch detailed data
+                    if (basicInfo) {
+                        this.updateUserInfo(basicInfo);
+                        await this.fetchStatistics(apiKey);
+                        
+                        this.loginForm.classList.add('hidden');
+                        this.statsContainer.classList.remove('hidden');
+                        this.hideError();
+                    }
                 } catch (error) {
-                    console.error('Error:', error);
-                    alert('Failed to connect to Torn API');
+                    this.showError(error.message);
+                }
+            }
+
+            validateApiKey(apiKey) {
+                return apiKey.length === 43 && /^[0-9A-Fa-f]+$/.test(apiKey);
+            }
+
+            async fetchBasicInfo(apiKey) {
+                try {
+                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    return data;
+                } catch (error) {
+                    throw new Error(`API request failed: ${error.message}`);
                 }
             }
 
             updateUserInfo(data) {
                 this.userInfoDiv.innerHTML = `
                     <strong>${data.name}</strong><br>
-                    ID: ${data.player_id}
+                    ID: ${data.player_id}<br>
+                    Level: ${data.level}<br>
+                    Status: ${data.status}
                 `;
             }
 
             async fetchStatistics(apiKey) {
-                const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=profile`);
-                const data = await response.json();
+                try {
+                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=profile,stats`);
+                    const data = await response.json();
+                    
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
 
-                // Create a simple chart showing basic statistics
+                    this.renderStatistics(data);
+                } catch (error) {
+                    this.showError(`Failed to fetch statistics: ${error.message}`);
+                }
+            }
+
+            renderStatistics(data) {
+                const stats = {
+                    strength: data.strength,
+                    speed: data.speed,
+                    defense: data.defense,
+                    dexterity: data.dexterity
+                };
+
                 const ctx = document.createElement('canvas');
                 this.statsContainer.appendChild(ctx);
 
                 new Chart(ctx, {
                     type: 'bar',
                     data: {
-                        labels: ['Strength', 'Speed', 'Defense', 'Dexterity'],
+                        labels: Object.keys(stats),
                         datasets: [{
                             label: 'Stats',
-                            data: [
-                                data.strength,
-                                data.speed,
-                                data.defense,
-                                data.dexterity
-                            ],
+                            data: Object.values(stats),
                             backgroundColor: [
                                 'rgba(255, 99, 132, 0.2)',
                                 'rgba(54, 162, 235, 0.2)',
@@ -123,6 +177,15 @@
                         maintainAspectRatio: false
                     }
                 });
+            }
+
+            showError(message) {
+                this.errorMessage.textContent = message;
+                this.errorMessage.style.display = 'block';
+            }
+
+            hideError() {
+                this.errorMessage.style.display = 'none';
             }
         }
 
