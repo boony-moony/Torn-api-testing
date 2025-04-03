@@ -49,71 +49,65 @@
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
-        class TornStatsApp {
-            constructor() {
-                this.initializeElements();
-                this.setupEventListeners();
+class TornStatsApp {
+    constructor() {
+        this.initializeElements();
+        this.setupEventListeners();
+    }
+
+    initializeElements() {
+        this.loginForm = document.getElementById('login-form');
+        this.apiKeyInput = document.getElementById('api-key');
+        this.userInfoDiv = document.getElementById('user-info');
+        this.statsContainer = document.getElementById('stats-container');
+        this.errorMessage = document.getElementById('error-message');
+    }
+
+    setupEventListeners() {
+        this.loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await this.handleLogin();
+        });
+    }
+
+    async handleLogin() {
+        const apiKey = this.apiKeyInput.value.trim();
+        
+        try {
+            // Basic validation
+            if (!this.validateApiKey(apiKey)) {
+                throw new Error('Invalid API key format');
             }
 
-            initializeElements() {
-                this.loginForm = document.getElementById('login-form');
-                this.apiKeyInput = document.getElementById('api-key');
-                this.userInfoDiv = document.getElementById('user-info');
-                this.statsContainer = document.getElementById('stats-container');
-                this.errorMessage = document.getElementById('error-message');
-            }
-
-            setupEventListeners() {
-                this.loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    await this.handleLogin();
-                });
-            }
-
-            async handleLogin() {
-                const apiKey = this.apiKeyInput.value.trim();
+            // Try basic info first
+            const basicInfo = await this.fetchBasicInfo(apiKey);
+            
+            if (basicInfo) {
+                this.updateUserInfo(basicInfo);
+                await this.fetchStatistics(apiKey);
                 
-                try {
-                    // Basic validation - allows for shorter keys
-                    if (!this.validateApiKey(apiKey)) {
-                        throw new Error('Invalid API key format');
-                    }
-
-                    // Try basic info first
-                    const basicInfo = await this.fetchBasicInfo(apiKey);
-                    
-                    if (basicInfo) {
-                        this.updateUserInfo(basicInfo);
-                        await this.fetchStatistics(apiKey);
-                        
-                        this.loginForm.classList.add('hidden');
-                        this.statsContainer.classList.remove('hidden');
-                        this.hideError();
-                    }
-                } catch (error) {
-                    this.showError(error.message);
-                }
+                this.loginForm.classList.add('hidden');
+                this.statsContainer.classList.remove('hidden');
+                this.hideError();
             }
+        } catch (error) {
+            this.showError(error.message);
+        }
+    }
 
-            validateApiKey(apiKey) {
-                // Updated validation to allow for shorter keys
-                return /^[0-9A-Za-z]+$/.test(apiKey);
+    validateApiKey(apiKey) {
+        return /^[0-9A-Za-z]+$/.test(apiKey);
+    }
+
+    async fetchBasicInfo(apiKey) {
+        try {
+            const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(`API Error: ${data.error.code} - ${data.error.error}`);
             }
-
-            async fetchBasicInfo(apiKey) {
-                try {
-                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-                    return data;
-                } catch (error) {
-                    throw new Error(`API request failed: ${error.message}`);
-                }
-            }
-
+            return data
             updateUserInfo(data) {
                 this.userInfoDiv.innerHTML = `
                     <strong>${data.name}</strong><br>
