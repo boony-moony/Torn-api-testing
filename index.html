@@ -53,7 +53,6 @@
             constructor() {
                 this.initializeElements();
                 this.setupEventListeners();
-                this.setupErrorHandling();
             }
 
             initializeElements() {
@@ -71,18 +70,11 @@
                 });
             }
 
-            setupErrorHandling() {
-                window.onerror = (message, source, lineno, colno, error) => {
-                    this.showError(`Error: ${message} at line ${lineno}`);
-                    return true;
-                };
-            }
-
             async handleLogin() {
                 const apiKey = this.apiKeyInput.value.trim();
                 
                 try {
-                    // Validate API key format
+                    // Basic validation - allows for shorter keys
                     if (!this.validateApiKey(apiKey)) {
                         throw new Error('Invalid API key format');
                     }
@@ -90,7 +82,6 @@
                     // Try basic info first
                     const basicInfo = await this.fetchBasicInfo(apiKey);
                     
-                    // If basic info succeeds, fetch detailed data
                     if (basicInfo) {
                         this.updateUserInfo(basicInfo);
                         await this.fetchStatistics(apiKey);
@@ -105,7 +96,8 @@
             }
 
             validateApiKey(apiKey) {
-                return apiKey.length === 43 && /^[0-9A-Fa-f]+$/.test(apiKey);
+                // Updated validation to allow for shorter keys
+                return /^[0-9A-Za-z]+$/.test(apiKey);
             }
 
             async fetchBasicInfo(apiKey) {
