@@ -83,31 +83,39 @@
                 });
             }
 
-            async handleLogin() {
-                const apiKey = this.apiKeyInput.value.trim();
-                
-                try {
-                    // Basic validation
-                    if (!this.validateApiKey(apiKey)) {
-                        throw new Error('Invalid API key format');
-                    }
+async handleLogin() {
+    const apiKey = this.apiKeyInput.value.trim();
+    
+    try {
+        // Detailed validation with specific error messages
+        if (!apiKey) {
+            throw new Error('API key cannot be empty');
+        }
+        
+        if (apiKey.includes(' ')) {
+            throw new Error('API key cannot contain spaces');
+        }
+        
+        if (!/^[0-9A-Za-z]+$/.test(apiKey)) {
+            throw new Error('API key can only contain letters and numbers');
+        }
 
-                    // Try basic info first
-                    const basicInfo = await this.fetchBasicInfo(apiKey);
-                    
-                    if (basicInfo) {
-                        this.updateUserInfo(basicInfo);
-                        await this.fetchStatistics(apiKey);
-                        
-                        this.loginForm.classList.add('hidden');
-                        this.statsContainer.classList.remove('hidden');
-                        this.showSuccess('Logged in successfully!');
-                        this.hideError();
-                    }
-                } catch (error) {
-                    this.showError(error.message);
-                }
-            }
+        // Try basic info first
+        const basicInfo = await this.fetchBasicInfo(apiKey);
+        
+        if (basicInfo) {
+            this.updateUserInfo(basicInfo);
+            await this.fetchStatistics(apiKey);
+            
+            this.loginForm.classList.add('hidden');
+            this.statsContainer.classList.remove('hidden');
+            this.showSuccess('Logged in successfully!');
+            this.hideError();
+        }
+    } catch (error) {
+        this.showError(error.message);
+    }
+}
 
             validateApiKey(apiKey) {
                 return /^[0-9A-Za-z]+$/.test(apiKey);
