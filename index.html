@@ -3,232 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torn City Stats</title>
-    <style>
-        .container { max-width: 800px; margin: 0 auto; padding: 20px; }
-        .user-info { 
-            position: fixed; 
-            top: 20px; 
-            right: 20px; 
-            background: #333; 
-            color: white; 
-            padding: 10px; 
-            border-radius: 5px; 
-        }
-        .login-form { 
-            margin-top: 50px; 
-            text-align: center; 
-            padding: 20px; 
-            border: 1px solid #ccc; 
-            border-radius: 5px; 
-        }
-        .error-message { 
-            color: red; 
-            margin-top: 10px; 
-            display: none; 
-            padding: 10px; 
-            border-radius: 4px;
-            background: #ffebee;
-        }
-        .success-message { 
-            color: green; 
-            margin-top: 10px; 
-            display: none; 
-            padding: 10px; 
-            border-radius: 4px;
-            background: #e8f5e9;
-        }
-        .stats-container { margin-top: 50px; }
-        canvas { max-width: 100%; height: auto; }
-    </style>
+    <title>Faction Chain Manager</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="user-info" class="user-info"></div>
-    
-    <div class="container">
-        <form id="login-form" class="login-form">
-            <h2>Enter Torn City API Key</h2>
-            <input type="text" id="api-key" placeholder="API Key" required>
-            <button type="submit">Login</button>
-            <div id="error-message" class="error-message"></div>
-            <div id="success-message" class="success-message"></div>
-        </form>
+    <!-- Navigation -->
+    <nav class="mobile-nav">
+        <div class="menu-icon">☰</div>
+        <div class="logo">Faction Chain</div>
+    </nav>
 
-        <div id="stats-container" class="stats-container hidden">
-            <!-- Statistics will appear here -->
-        </div>
-    </div>
+    <!-- Main Content -->
+    <main class="container">
+        <!-- Login Section -->
+        <section id="login-section" class="hidden">
+            <form id="login-form">
+                <h2>Login</h2>
+                <input type="text" placeholder="API Key" required>
+                <button type="submit">Login</button>
+            </form>
+        </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        class TornStatsApp {
-            constructor() {
-                this.initializeElements();
-                this.setupEventListeners();
-            }
+        <!-- Faction Dashboard -->
+        <section id="faction-dashboard" class="hidden">
+            <header>
+                <h1>Faction Name</h1>
+                <div class="member-count">Members: <span>0</span></div>
+            </header>
 
-            initializeElements() {
-                this.loginForm = document.getElementById('login-form');
-                this.apiKeyInput = document.getElementById('api-key');
-                this.userInfoDiv = document.getElementById('user-info');
-                this.statsContainer = document.getElementById('stats-container');
-                this.errorMessage = document.getElementById('error-message');
-                this.successMessage = document.getElementById('success-message');
-            }
+            <!-- Chain Status -->
+            <div class="chain-status">
+                <h2>Chain Status</h2>
+                <div class="status-indicator"></div>
+                <div class="expiration-timer">Expires in: --:--:--</div>
+            </div>
 
-            setupEventListeners() {
-                this.loginForm.addEventListener('submit', async (e) => {
-                    e.preventDefault();
-                    await this.handleLogin();
-                });
-            }
+            <!-- Member List -->
+            <div class="member-list">
+                <h2>Active Members</h2>
+                <ul id="members-list"></ul>
+            </div>
 
-async handleLogin() {
-    const apiKey = this.apiKeyInput.value.trim();
-    
-    try {
-        // Validate API key format
-        if (!this.validateApiKey(apiKey)) {
-            throw new Error('Invalid API key format. Please enter a valid Torn City API key.');
-        }
+            <!-- Participation Controls -->
+            <div class="participation-controls">
+                <button id="opt-in-btn">Opt In</button>
+                <div class="energy-display">
+                    Energy Level: <span id="energy-level">100</span>
+                </div>
+            </div>
+        </section>
+    </main>
 
-        // Try basic info first
-        const basicInfo = await this.fetchBasicInfo(apiKey);
-        
-        // Show username immediately after successful API call
-        this.showUsername(basicInfo.name);
-        
-        // Update user info
-        this.updateUserInfo(basicInfo);
-        
-        // Fetch and display statistics
-        await this.fetchStatistics(apiKey);
-        
-        // Show success message
-        this.showSuccess('Logged in successfully!');
-        
-        // Show statistics page
-        this.loginForm.classList.add('hidden');
-        this.statsContainer.classList.remove('hidden');
-        
-    } catch (error) {
-        this.showError(error.message);
-    }
-}
-
-// Add this new method to show username
-showUsername(name) {
-    const usernameDiv = document.getElementById('username');
-    usernameDiv.textContent = `Welcome, ${name}!`;
-    usernameDiv.style.display = 'block';
-}
-
-// Add this to your HTML, right after the login form:
-<div id="username" style="display: none; text-align: center; margin-top: 10px; color: #4CAF50; font-weight: bold;"></div>
-            validateApiKey(apiKey) {
-                // Must be at least 16 characters long
-                if (apiKey.length < 16) {
-                    return false;
-                }
-                
-                // Must contain only valid characters
-                if (!/^[0-9A-Za-z]+$/.test(apiKey)) {
-                    return false;
-                }
-                
-                return true;
-            }
-
-            async fetchBasicInfo(apiKey) {
-                try {
-                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=basic`);
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(`API Error: ${data.error.code} - ${data.error.error}`);
-                    }
-                    return data;
-                } catch (error) {
-                    throw new Error(`Failed to fetch user info: ${error.message}`);
-                }
-            }
-
-            updateUserInfo(data) {
-                this.userInfoDiv.innerHTML = `
-                    <strong>${data.name}</strong><br>
-                    ID: ${data.player_id}<br>
-                    Level: ${data.level}<br>
-                    Status: ${data.status}
-                `;
-            }
-
-            async fetchStatistics(apiKey) {
-                try {
-                    const response = await fetch(`https://api.torn.com/user/${apiKey}?selections=profile,stats`);
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        throw new Error(`API Error: ${data.error.code} - ${data.error.error}`);
-                    }
-
-                    this.renderStatistics(data);
-                } catch (error) {
-                    throw new Error(`Failed to fetch statistics: ${error.message}`);
-                }
-            }
-
-            renderStatistics(data) {
-                const stats = {
-                    strength: data.strength,
-                    speed: data.speed,
-                    defense: data.defense,
-                    dexterity: data.dexterity
-                };
-
-                const ctx = document.createElement('canvas');
-                this.statsContainer.appendChild(ctx);
-
-                new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels: Object.keys(stats),
-                        datasets: [{
-                            label: 'Stats',
-                            data: Object.values(stats),
-                            backgroundColor: [
-                                'rgba(255, 99, 132, 0.2)',
-                                'rgba(54, 162, 235, 0.2)',
-                                'rgba(75, 192, 192, 0.2)',
-                                'rgba(153, 102, 255, 0.2)'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            }
-
-            showError(message) {
-                this.errorMessage.textContent = message;
-                this.errorMessage.style.display = 'block';
-            }
-
-            showSuccess(message) {
-                this.successMessage.textContent = message;
-                this.successMessage.style.display = 'block';
-            }
-
-            hideError() {
-                this.errorMessage.style.display = 'none';
-            }
-        }
-
-        // Initialize the app when the page loads
-        document.addEventListener('DOMContentLoaded', () => {
-            new TornStatsApp();
-        });
-    </script>
+    <script src="script.js"></script>
 </body>
 </html>
