@@ -4,56 +4,291 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faction Chain Manager</title>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        :root {
+            --primary-color: #2196F3;
+            --secondary-color: #303030;
+            --background-color: #ffffff;
+            --card-background: #f5f5f5;
+            --border-radius: 8px;
+            --spacing: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            line-height: 1.6;
+            background-color: var(--background-color);
+            color: var(--secondary-color);
+            padding: var(--spacing);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: calc(var(--spacing) * 2);
+        }
+
+        .card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: var(--spacing);
+            margin-bottom: var(--spacing);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing);
+        }
+
+        label {
+            display: block;
+            margin-bottom: calc(var(--spacing) / 2);
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: var(--spacing);
+            border: 1px solid #ddd;
+            border-radius: var(--border-radius);
+            background-color: white;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            width: 100%;
+            font-size: 1rem;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #1976D2;
+        }
+
+        .participant-list {
+            display: grid;
+            gap: var(--spacing);
+            margin-top: var(--spacing);
+        }
+
+        .participant-card {
+            background-color: white;
+            padding: var(--spacing);
+            border-radius: var(--border-radius);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .energy-bar {
+            height: 4px;
+            background-color: #ddd;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: calc(var(--spacing) / 2);
+        }
+
+        .energy-fill {
+            height: 100%;
+            background-color: var(--primary-color);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --spacing: 12px;
+            }
+
+            .container {
+                padding: var(--spacing);
+            }
+        }
+    </style>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="mobile-nav">
-        <div class="menu-icon">☰</div>
-        <div class="logo">Faction Chain</div>
-    </nav>
+    <div class="container">
+        <header>
+            <h1>Faction Chain Manager</h1>
+        </header>
 
-    <!-- Main Content -->
-    <main class="container">
-        <!-- Login Section -->
-        <section id="login-section" class="hidden">
-            <form id="login-form">
+        <main>
+            <!-- Login Section -->
+            <section id="login-section" class="card">
                 <h2>Login</h2>
-                <input type="text" placeholder="API Key" required>
-                <button type="submit">Login</button>
-            </form>
-        </section>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="api-key">API Key:</label>
+                        <input type="text" id="api-key" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </section>
 
-        <!-- Faction Dashboard -->
-        <section id="faction-dashboard" class="hidden">
-            <header>
-                <h1>Faction Name</h1>
-                <div class="member-count">Members: <span>0</span></div>
-            </header>
-
-            <!-- Chain Status -->
-            <div class="chain-status">
-                <h2>Chain Status</h2>
-                <div class="status-indicator"></div>
-                <div class="expiration-timer">Expires in: --:--:--</div>
-            </div>
-
-            <!-- Member List -->
-            <div class="member-list">
-                <h2>Active Members</h2>
-                <ul id="members-list"></ul>
-            </div>
-
-            <!-- Participation Controls -->
-            <div class="participation-controls">
-                <button id="opt-in-btn">Opt In</button>
-                <div class="energy-display">
-                    Energy Level: <span id="energy-level">100</span>
+            <!-- Chain Management Section -->
+            <section id="chain-section" class="card" style="display: none;">
+                <h2>Faction Chain Management</h2>
+                
+                <!-- Faction Info -->
+                <div id="faction-info">
+                    <h3 id="faction-name">Loading...</h3>
+                    <p id="chain-status"></p>
                 </div>
-            </div>
-        </section>
-    </main>
 
-    <script src="script.js"></script>
+                <!-- Participation Controls -->
+                <div class="form-group">
+                    <label for="energy-level">Energy Level:</label>
+                    <input type="number" id="energy-level" min="0" max="100" value="100">
+                </div>
+                <button id="toggle-participation">Opt Out</button>
+
+                <!-- Participants List -->
+                <div class="participant-list" id="participants-container">
+                    <!-- Dynamically populated -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        class ChainManager {
+            constructor() {
+                this.factionData = {};
+                this.participants = [];
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                document.getElementById('login-form').addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    await this.handleLogin(e.target['api-key'].value);
+                });
+
+                document.getElementById('toggle-participation').addEventListener('click', () => {
+                    this.toggleParticipation();
+                });
+
+                window.addEventListener('resize', () => this.updateLayout());
+            }
+
+            async handleLogin(apiKey) {
+                try {
+                    // Simulate API call - replace with actual API endpoint
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    
+                    this.factionData = {
+                        id: 'FACTION_123',
+                        name: 'Example Faction',
+                        members: ['player1', 'player2', 'player3']
+                    };
+
+                    document.getElementById('login-section').style.display = 'none';
+                    document.getElementById('chain-section').style.display = 'block';
+                    
+                    this.updateUI();
+                } catch (error) {
+                    alert('Login failed');
+                }
+            }
+
+            toggleParticipation() {
+                const participationButton = document.getElementById('toggle-participation');
+                const energyLevel = parseInt(document.getElementById('energy-level').value);
+
+                if (participationButton.textContent === 'Opt Out') {
+                    participationButton.textContent = 'Opt In';
+                    this.removeParticipant(energyLevel);
+                } else {
+                    participationButton.textContent = 'Opt In';
+                    this.addParticipant(energyLevel);
+                }
+            }
+
+            addParticipant(energyLevel) {
+                const participant = {
+                    id: Date.now(),
+                    energyLevel,
+                    joinedAt: new Date().toISOString()
+                };
+
+                this.participants.push(participant);
+                this.updateParticipantsUI();
+                this.updateChainStatus();
+            }
+
+            removeParticipant(energyLevel) {
+                this.participants = this.participants.filter(p => 
+                    !(p.energyLevel === energyLevel && 
+                      p.joinedAt === this.participants.find(p2 => p2.energyLevel === energyLevel)?.joinedAt)
+                );
+                this.updateParticipantsUI();
+                this.updateChainStatus();
+            }
+
+            updateUI() {
+                document.getElementById('faction-name').textContent = this.factionData.name;
+                this.updateChainStatus();
+                this.updateParticipantsUI();
+            }
+
+            updateChainStatus() {
+                const statusElement = document.getElementById('chain-status');
+                const activeCount = this.participants.length;
+                
+                statusElement.textContent = `${activeCount} member${activeCount !== 1 ? 's' : ''} participating`;
+            }
+
+            updateParticipantsUI() {
+                const container = document.getElementById('participants-container');
+                container.innerHTML = '';
+
+                [...this.participants]
+                    .sort((a, b) => b.energyLevel - a.energyLevel)
+                    .forEach(participant => {
+                        const participantCard = document.createElement('div');
+                        participantCard.className = 'participant-card';
+                        
+                        const energyBar = document.createElement('div');
+                        energyBar.className = 'energy-bar';
+                        energyBar.innerHTML = `<div class="energy-fill" style="width: ${participant.energyLevel}%"></div>`;
+
+                        participantCard.innerHTML = `
+                            <strong>Player ${this.participants.indexOf(participant) + 1}</strong>
+                            <p>Energy Level: ${participant.energyLevel}</p>
+                            ${energyBar.outerHTML}
+                        `;
+                        
+                        container.appendChild(participantCard);
+                    });
+            }
+
+            updateLayout() {
+                const chainSection = document.getElementById('chain-section');
+                if (window.innerWidth <= 768) {
+                    chainSection.style.padding = '8px';
+                } else {
+                    chainSection.style.padding = '16px';
+                }
+            }
+        }
+
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChainManager();
+        });
+    </script>
 </body>
 </html>
